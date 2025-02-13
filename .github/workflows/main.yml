@@ -1,8 +1,8 @@
-name: Android Build
+name: Android CI
 
 on:
   push:
-    branches: [ "main" ]  # عدلها حسب فرعك 
+    branches: [ "main" ]   # أو اسم الفرع الذي تستعمله
   pull_request:
     branches: [ "main" ]
 
@@ -11,14 +11,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1) جلب أكواد المستودع
       - uses: actions/checkout@v3
 
+      # 2) إعداد Java (اختيار إصدار جاڤا مناسب لمشروعك)
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 17  # أو 11 أو 8 إذا احتاج مشروعك لذلك
 
+      # 3) تثبيت أدوات أندرويد (Android SDK)
       - name: Install Android SDK
         run: |
           sudo apt-get update
@@ -29,29 +32,35 @@ jobs:
           unzip tools.zip
           mkdir latest
           mv cmdline-tools/* latest
+
           echo "export ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
           echo "export ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
           echo "export PATH=$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$PATH" >> $GITHUB_ENV
 
+      # 4) تحميل متغيرات البيئة التي سجلناها في الخطوة السابقة
       - name: Load env
         run: source $GITHUB_ENV
 
+      # 5) قبول رخص حِزم أندرويد
       - name: Accept licenses
         run: yes | sdkmanager --licenses
 
+      # 6) تثبيت أدوات البناء والمنصات
       - name: Install build tools and platforms
         run: |
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
+      # 7) اجعل ملف gradlew قابلاً للتنفيذ
       - name: Make gradlew executable
         run: chmod +x gradlew
 
+      # 8) بناء نسخة Debug من التطبيق
       - name: Build with Gradle (Debug)
         run: ./gradlew assembleDebug
 
-      # (اختياري) رفع ملف الـ APK كـ Artifact
+      # 9) رفع ملف APK الناتج كـ Artifact
       - name: Upload Debug APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4    # استخدمنا v4 لتفادي الرسالة التحذيرية
         with:
-          name: debug-apk
+          name: debug-apk                   # اسم الـ Artifact
           path: app/build/outputs/apk/debug/*.apk
